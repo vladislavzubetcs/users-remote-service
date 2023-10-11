@@ -10,6 +10,7 @@ use JsonException;
 use RuntimeException;
 use Traversable;
 use UsersRemoteService\UsersRemoteService\Data\UserDto;
+use UsersRemoteService\UsersRemoteService\Exceptions\UserNotFoundException;
 
 class UserService
 {
@@ -18,11 +19,12 @@ class UserService
     ) {
     }
 
-    public function find(int $id): UserDto
+    public function find(int $id): UserDto|null
     {
         try {
             $response = $this->client->get(sprintf(
-                'https://reqres.in/api/users/%s',
+                '%s/%s',
+                config('users-remote-service')['endpoint'],
                 $id
             ));
 
@@ -32,8 +34,14 @@ class UserService
                 512,
                 JSON_THROW_ON_ERROR
             );
+
+            if (empty($user)) {
+                throw new UserNotFoundException();
+            }
         } catch (GuzzleException|JsonException $e) {
             throw new RuntimeException($e->getMessage());
+        } catch (UserNotFoundException $e) {
+            return null;
         }
 
         return new UserDto(
@@ -49,7 +57,8 @@ class UserService
     {
         try {
             $response = $this->client->get(sprintf(
-                'https://reqres.in/api/users?page=%s&per_page=%s',
+                '%s?page=%s&per_page=%s',
+                config('users-remote-service')['endpoint'],
                 $page,
                 $perPage
             ));
@@ -60,8 +69,14 @@ class UserService
                 512,
                 JSON_THROW_ON_ERROR
             )->data;
+
+            if (empty($users)) {
+                throw new UserNotFoundException();
+            }
         } catch (GuzzleException|JsonException $e) {
             throw new RuntimeException($e->getMessage());
+        } catch (UserNotFoundException $e) {
+            return null;
         }
 
         foreach ($users as $user) {
@@ -79,7 +94,7 @@ class UserService
     {
         try {
             $response = $this->client->post(
-                'https://reqres.in/api/users',
+                config('users-remote-service')['endpoint'],
                 [
                     'json' => [
                         'name' => $name,
